@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Detector de Posturas - Incomodidad/Molestia</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        color: #333;
+      }
+
+      .container {
+        display: grid;
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr auto;
+        min-height: 100vh;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        gap: 20px;
+      }
+
+      .header {
+        text-align: center;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 30px;
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      }
+
+      .header h1 {
+        color: #4a5568;
+        margin-bottom: 10px;
+        font-size: 2.5em;
+        font-weight: 700;
+      }
+
+      .header p {
+        color: #718096;
+        font-size: 1.1em;
+      }
+
+      .main-content {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+        align-items: start;
+      }
+
+      @media (max-width: 768px) {
+        .main-content {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .upload-section {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 20px;
+        padding: 30px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      }
+
+      .upload-zone {
+        border: 3px dashed #cbd5e0;
+        border-radius: 15px;
+        padding: 60px 20px;
+        text-align: center;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        position: relative;
+        background: #f8fafc;
+      }
+
+      .upload-zone:hover,
+      .upload-zone.dragover {
+        border-color: #667eea;
+        background: #edf2f7;
+        transform: translateY(-2px);
+      }
+
+      .upload-zone input[type="file"] {
+        position: absolute;
+        opacity: 0;
+        width: 100%;
+        height: 100%;
+        cursor: pointer;
+      }
+
+      .upload-text {
+        font-size: 1.2em;
+        color: #4a5568;
+        margin-bottom: 10px;
+      }
+
+      .upload-subtext {
+        color: #718096;
+        font-size: 0.9em;
+      }
+
+      .analysis-section {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 20px;
+        padding: 30px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      }
+
+      .canvas-container {
+        position: relative;
+        margin-bottom: 20px;
+        text-align: center;
+      }
+
+      #imageCanvas {
+        max-width: 100%;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+      }
+
+      .results {
+        background: #f8fafc;
+        border-radius: 15px;
+        padding: 25px;
+        margin-top: 20px;
+        border-left: 5px solid #667eea;
+      }
+
+      .result-title {
+        font-size: 1.4em;
+        font-weight: 600;
+        margin-bottom: 15px;
+        color: #2d3748;
+      }
+
+      .result-status {
+        font-size: 1.2em;
+        font-weight: 600;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 15px;
+        text-align: center;
+      }
+
+      .result-status.normal {
+        background: #c6f6d5;
+        color: #22543d;
+        border: 2px solid #38a169;
+      }
+
+      .result-status.uncomfortable {
+        background: #fed7d7;
+        color: #742a2a;
+        border: 2px solid #e53e3e;
+      }
+
+      .result-status.analyzing {
+        background: #bee3f8;
+        color: #2a4365;
+        border: 2px solid #3182ce;
+      }
+
+      .indicators {
+        margin-top: 15px;
+      }
+
+      .indicator {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px;
+        margin: 8px 0;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      }
+
+      .indicator-name {
+        font-weight: 500;
+        color: #4a5568;
+      }
+
+      .indicator-value {
+        font-weight: 600;
+        padding: 5px 10px;
+        border-radius: 5px;
+      }
+
+      .indicator-value.detected {
+        background: #fed7d7;
+        color: #742a2a;
+      }
+
+      .indicator-value.normal {
+        background: #c6f6d5;
+        color: #22543d;
+      }
+
+      .loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        color: #4a5568;
+        margin: 20px 0;
+      }
+
+      .spinner {
+        width: 20px;
+        height: 20px;
+        border: 3px solid #e2e8f0;
+        border-top: 3px solid #667eea;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .footer {
+        text-align: center;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 20px;
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      }
+
+      .footer p {
+        color: #718096;
+        font-size: 0.9em;
+      }
+
+      .info-panel {
+        background: #e6fffa;
+        border: 1px solid #81e6d9;
+        border-radius: 10px;
+        padding: 20px;
+        margin-top: 20px;
+      }
+
+      .info-panel h3 {
+        color: #234e52;
+        margin-bottom: 10px;
+        font-size: 1.1em;
+      }
+
+      .info-panel ul {
+        color: #285e61;
+        padding-left: 20px;
+      }
+
+      .info-panel li {
+        margin-bottom: 5px;
+      }
+
+      .color-analysis {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: 10px;
+        margin-top: 15px;
+      }
+
+      .color-block {
+        height: 40px;
+        border-radius: 5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 0.8em;
+        font-weight: bold;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header class="header">
+        <h1>🤖 Detector de Posturas</h1>
+        <p>
+          Analiza si una persona parece incómoda o molesta basándose en análisis
+          visual avanzado
+        </p>
+      </header>
+
+      <main class="main-content">
+        <section class="upload-section">
+          <h2 style="margin-bottom: 20px; color: #4a5568">Subir Imagen</h2>
+          <div class="upload-zone" id="uploadZone">
+            <input type="file" id="imageInput" accept="image/*" />
+            <div class="upload-text">📸 Arrastra una imagen aquí</div>
+            <div class="upload-subtext">
+              o haz clic para seleccionar un archivo
+            </div>
+          </div>
+
+          <div class="info-panel">
+            <h3>📋 Indicadores Analizados:</h3>
+            <ul>
+              <li>
+                <strong>Composición visual:</strong> Distribución de elementos
+              </li>
+              <li>
+                <strong>Colores dominantes:</strong> Tonos fríos vs cálidos
+              </li>
+              <li><strong>Contraste:</strong> Niveles de tensión visual</li>
+              <li><strong>Simetría:</strong> Balance en la composición</li>
+              <li><strong>Densidad:</strong> Concentración de elementos</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="analysis-section">
+          <h2 style="margin-bottom: 20px; color: #4a5568">
+            Análisis de Postura
+          </h2>
+
+          <div
+            class="canvas-container"
+            id="canvasContainer"
+            style="display: none"
+          >
+            <canvas id="imageCanvas"></canvas>
+          </div>
+
+          <div class="results" id="results">
+            <div class="result-title">Resultado del Análisis</div>
+            <div class="result-status normal" id="statusResult">
+              ✅ Sistema listo. Sube una imagen para analizar.
+            </div>
+
+            <div class="indicators" id="indicators"></div>
+          </div>
+
+          <div class="loading" id="loading" style="display: none">
+            <div class="spinner"></div>
+            <span>Analizando imagen...</span>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <p>
+          💡 Utiliza imágenes claras donde se vea la persona completa para
+          mejores resultados
+        </p>
+      </footer>
+    </div>
+
+    <script>
+      class PostureDetector {
+        constructor() {
+          this.analysisHistory = [];
+
+          this.initializeElements();
+          this.setupEventListeners();
+          console.log("Detector de posturas inicializado");
+        }
+
+        initializeElements() {
+          this.uploadZone = document.getElementById("uploadZone");
+          this.imageInput = document.getElementById("imageInput");
+          this.canvasContainer = document.getElementById("canvasContainer");
+          this.imageCanvas = document.getElementById("imageCanvas");
+          this.results = document.getElementById("results");
+          this.statusResult = document.getElementById("statusResult");
+          this.indicators = document.getElementById("indicators");
+          this.loading = document.getElementById("loading");
+
+          this.ctx = this.imageCanvas.getContext("2d");
+        }
+
+        setupEventListeners() {
+          // Drag and drop functionality
+          this.uploadZone.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            this.uploadZone.classList.add("dragover");
+          });
+
+          this.uploadZone.addEventListener("dragleave", (e) => {
+            e.preventDefault();
+            this.uploadZone.classList.remove("dragover");
+          });
+
+          this.uploadZone.addEventListener("drop", (e) => {
+            e.preventDefault();
+            this.uploadZone.classList.remove("dragover");
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+              this.processImage(files[0]);
+            }
+          });
+
+          // File input change
+          this.imageInput.addEventListener("change", (e) => {
+            if (e.target.files.length > 0) {
+              this.processImage(e.target.files[0]);
+            }
+          });
+        }
+
+        async processImage(file) {
+          if (!file.type.startsWith("image/")) {
+            this.showError(
+              "Por favor, selecciona un archivo de imagen válido."
+            );
+            return;
+          }
+
+          this.showLoading(true);
+
+          try {
+            const image = await this.loadImage(file);
+            await this.analyzePosture(image);
+          } catch (error) {
+            console.error("Error procesando imagen:", error);
+            this.showError(
+              "Error procesando la imagen. Intenta con otra imagen."
+            );
+          } finally {
+            this.showLoading(false);
+          }
+        }
+
+        loadImage(file) {
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              const img = new Image();
+              img.onload = () => resolve(img);
+              img.onerror = reject;
+              img.src = e.target.result;
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+        }
+
+        async analyzePosture(image) {
+          // Configurar canvas
+          this.setupCanvas(image);
+
+          // Realizar análisis visual avanzado
+          const analysis = await this.performVisualAnalysis(image);
+
+          // Mostrar resultados
+          this.displayResults(analysis);
+
+          // Guardar en historial
+          this.saveToHistory(analysis);
+        }
+
+        setupCanvas(image) {
+          const maxWidth = 500;
+          const maxHeight = 400;
+          let { width, height } = image;
+
+          // Redimensionar manteniendo proporción
+          if (width > maxWidth || height > maxHeight) {
+            const ratio = Math.min(maxWidth / width, maxHeight / height);
+            width *= ratio;
+            height *= ratio;
+          }
+
+          this.imageCanvas.width = width;
+          this.imageCanvas.height = height;
+          this.imageCanvas.style.width = width + "px";
+          this.imageCanvas.style.height = height + "px";
+
+          // Dibujar imagen
+          this.ctx.drawImage(image, 0, 0, width, height);
+
+          this.canvasContainer.style.display = "block";
+        }
+
+        async performVisualAnalysis(image) {
+          // Obtener datos de píxeles de la imagen
+          const imageData = this.ctx.getImageData(
+            0,
+            0,
+            this.imageCanvas.width,
+            this.imageCanvas.height
+          );
+          const pixels = imageData.data;
+
+          // Análisis de composición y características visuales
+          const analysis = {
+            colorAnalysis: this.analyzeColors(pixels),
+            compositionAnalysis: this.analyzeComposition(
+              pixels,
+              this.imageCanvas.width,
+              this.imageCanvas.height
+            ),
+            contrastAnalysis: this.analyzeContrast(pixels),
+            symmetryAnalysis: this.analyzeSymmetry(
+              pixels,
+              this.imageCanvas.width,
+              this.imageCanvas.height
+            ),
+            faceAnalysis: this.analyzeFacialRegion(
+              pixels,
+              this.imageCanvas.width,
+              this.imageCanvas.height
+            ),
+            postureAnalysis: this.analyzeBodyPosture(
+              pixels,
+              this.imageCanvas.width,
+              this.imageCanvas.height
+            ),
+            timestamp: new Date().toISOString(),
+          };
+
+          // Calcular puntuación de incomodidad basada en análisis visual mejorado
+          const discomfortScore = this.calculateDiscomfortScore(analysis);
+
+          return {
+            ...analysis,
+            discomfortScore,
+            isUncomfortable: discomfortScore >= 50,
+          };
+        }
+
+        analyzeColors(pixels) {
+          let redSum = 0,
+            greenSum = 0,
+            blueSum = 0;
+          let darkPixels = 0,
+            brightPixels = 0;
+          const totalPixels = pixels.length / 4;
+
+          for (let i = 0; i < pixels.length; i += 4) {
+            const r = pixels[i];
+            const g = pixels[i + 1];
+            const b = pixels[i + 2];
+
+            redSum += r;
+            greenSum += g;
+            blueSum += b;
+
+            const brightness = (r + g + b) / 3;
+            if (brightness < 80) darkPixels++;
+            if (brightness > 200) brightPixels++;
+          }
+
+          const avgRed = redSum / totalPixels;
+          const avgGreen = greenSum / totalPixels;
+          const avgBlue = blueSum / totalPixels;
+
+          return {
+            dominantColor: this.getDominantColor(avgRed, avgGreen, avgBlue),
+            warmth: (avgRed + (255 - avgBlue)) / 2, // Escala de calidez
+            darkness: (darkPixels / totalPixels) * 100,
+            brightness: (brightPixels / totalPixels) * 100,
+            avgRed,
+            avgGreen,
+            avgBlue,
+          };
+        }
+
+        getDominantColor(r, g, b) {
+          if (r > g && r > b) return "Rojo";
+          if (g > r && g > b) return "Verde";
+          if (b > r && b > g) return "Azul";
+          if (Math.abs(r - g) < 20 && Math.abs(g - b) < 20) return "Neutro";
+          return "Mixto";
+        }
+
+        analyzeComposition(pixels, width, height) {
+          // Análisis de distribución de masa visual
+          const centerX = width / 2;
+          const centerY = height / 2;
+
+          let leftWeight = 0,
+            rightWeight = 0;
+          let topWeight = 0,
+            bottomWeight = 0;
+          let centerWeight = 0;
+
+          for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+              const index = (y * width + x) * 4;
+              const intensity =
+                (pixels[index] + pixels[index + 1] + pixels[index + 2]) / 3;
+              const weight = 255 - intensity; // Píxeles oscuros tienen más peso
+
+              if (x < centerX) leftWeight += weight;
+              else rightWeight += weight;
+
+              if (y < centerY) topWeight += weight;
+              else bottomWeight += weight;
+
+              const distanceFromCenter = Math.sqrt(
+                (x - centerX) ** 2 + (y - centerY) ** 2
+              );
+              if (distanceFromCenter < Math.min(width, height) * 0.3) {
+                centerWeight += weight;
+              }
+            }
+          }
+
+          const totalWeight = leftWeight + rightWeight;
+          const balance = Math.abs(leftWeight - rightWeight) / totalWeight;
+          const verticalBalance =
+            Math.abs(topWeight - bottomWeight) / (topWeight + bottomWeight);
+
+          return {
+            horizontalBalance: balance,
+            verticalBalance: verticalBalance,
+            centerConcentration: centerWeight / (width * height),
+            isWellBalanced: balance < 0.2 && verticalBalance < 0.3,
+          };
+        }
+
+        analyzeContrast(pixels) {
+          let contrastSum = 0;
+          let edgePixels = 0;
+
+          const width = this.imageCanvas.width;
+          const height = this.imageCanvas.height;
+
+          for (let y = 1; y < height - 1; y++) {
+            for (let x = 1; x < width - 1; x++) {
+              const index = (y * width + x) * 4;
+              const rightIndex = (y * width + (x + 1)) * 4;
+              const bottomIndex = ((y + 1) * width + x) * 4;
+
+              const current =
+                (pixels[index] + pixels[index + 1] + pixels[index + 2]) / 3;
+              const right =
+                (pixels[rightIndex] +
+                  pixels[rightIndex + 1] +
+                  pixels[rightIndex + 2]) /
+                3;
+              const bottom =
+                (pixels[bottomIndex] +
+                  pixels[bottomIndex + 1] +
+                  pixels[bottomIndex + 2]) /
+                3;
+
+              const contrast =
+                Math.abs(current - right) + Math.abs(current - bottom);
+              contrastSum += contrast;
+
+              if (contrast > 50) edgePixels++;
+            }
+          }
+
+          const avgContrast = contrastSum / ((width - 2) * (height - 2));
+          const edgePercentage =
+            (edgePixels / ((width - 2) * (height - 2))) * 100;
+
+          return {
+            averageContrast: avgContrast,
+            edgePercentage: edgePercentage,
+            isHighContrast: avgContrast > 30,
+          };
+        }
+
+        analyzeFacialRegion(pixels, width, height) {
+          // Detectar región facial (tercio superior de la imagen)
+          const faceRegionHeight = Math.floor(height * 0.4);
+          const faceRegionWidth = Math.floor(width * 0.6);
+          const startX = Math.floor((width - faceRegionWidth) / 2);
+
+          let intensityVariance = 0;
+          let darkSpots = 0;
+          let brightSpots = 0;
+          let edgeCount = 0;
+          const facePixels = [];
+
+          for (let y = 0; y < faceRegionHeight; y++) {
+            for (let x = startX; x < startX + faceRegionWidth; x++) {
+              if (x >= 0 && x < width) {
+                const index = (y * width + x) * 4;
+                const intensity =
+                  (pixels[index] + pixels[index + 1] + pixels[index + 2]) / 3;
+                facePixels.push(intensity);
+
+                // Detectar manchas oscuras (pueden ser ojos muy abiertos o boca abierta)
+                if (intensity < 60) darkSpots++;
+                if (intensity > 200) brightSpots++;
+
+                // Detectar bordes abruptos (indicadores de tensión facial)
+                if (x > startX && y > 0) {
+                  const leftIndex = (y * width + (x - 1)) * 4;
+                  const topIndex = ((y - 1) * width + x) * 4;
+                  const leftIntensity =
+                    (pixels[leftIndex] +
+                      pixels[leftIndex + 1] +
+                      pixels[leftIndex + 2]) /
+                    3;
+                  const topIntensity =
+                    (pixels[topIndex] +
+                      pixels[topIndex + 1] +
+                      pixels[topIndex + 2]) /
+                    3;
+
+                  if (
+                    Math.abs(intensity - leftIntensity) > 40 ||
+                    Math.abs(intensity - topIntensity) > 40
+                  ) {
+                    edgeCount++;
+                  }
+                }
+              }
+            }
+          }
+
+          // Calcular varianza de intensidad
+          const avgIntensity =
+            facePixels.reduce((a, b) => a + b, 0) / facePixels.length;
+          intensityVariance =
+            facePixels.reduce(
+              (acc, val) => acc + Math.pow(val - avgIntensity, 2),
+              0
+            ) / facePixels.length;
+
+          const totalFacePixels = faceRegionWidth * faceRegionHeight;
+
+          return {
+            intensityVariance: Math.sqrt(intensityVariance),
+            darkSpotPercentage: (darkSpots / totalFacePixels) * 100,
+            brightSpotPercentage: (brightSpots / totalFacePixels) * 100,
+            edgePercentage: (edgeCount / totalFacePixels) * 100,
+            avgFaceIntensity: avgIntensity,
+            hasHighContrast: Math.sqrt(intensityVariance) > 50,
+          };
+        }
+
+        analyzeBodyPosture(pixels, width, height) {
+          // Analizar región del cuerpo (tercio medio e inferior)
+          const bodyStartY = Math.floor(height * 0.3);
+          const bodyHeight = height - bodyStartY;
+
+          let verticalEdges = 0;
+          let horizontalEdges = 0;
+          let cornerConcentration = 0;
+          let centerConcentration = 0;
+
+          for (let y = bodyStartY; y < height - 1; y++) {
+            for (let x = 0; x < width - 1; x++) {
+              const index = (y * width + x) * 4;
+              const rightIndex = (y * width + (x + 1)) * 4;
+              const bottomIndex = ((y + 1) * width + x) * 4;
+
+              const current =
+                (pixels[index] + pixels[index + 1] + pixels[index + 2]) / 3;
+              const right =
+                (pixels[rightIndex] +
+                  pixels[rightIndex + 1] +
+                  pixels[rightIndex + 2]) /
+                3;
+              const bottom =
+                (pixels[bottomIndex] +
+                  pixels[bottomIndex + 1] +
+                  pixels[bottomIndex + 2]) /
+                3;
+
+              // Detectar bordes verticales (pueden indicar brazos cruzados)
+              if (Math.abs(current - right) > 30) verticalEdges++;
+
+              // Detectar bordes horizontales (pueden indicar hombros tensos)
+              if (Math.abs(current - bottom) > 30) horizontalEdges++;
+
+              // Concentración en esquinas (postura cerrada)
+              const distanceToCorner = Math.min(
+                Math.sqrt(x * x + (y - bodyStartY) * (y - bodyStartY)),
+                Math.sqrt(
+                  (width - x) * (width - x) +
+                    (y - bodyStartY) * (y - bodyStartY)
+                )
+              );
+              if (distanceToCorner < width * 0.3 && current < 100) {
+                cornerConcentration++;
+              }
+
+              // Concentración en centro
+              const centerX = width / 2;
+              const centerY = bodyStartY + bodyHeight / 2;
+              const distanceToCenter = Math.sqrt(
+                (x - centerX) ** 2 + (y - centerY) ** 2
+              );
+              if (distanceToCenter < width * 0.2 && current < 120) {
+                centerConcentration++;
+              }
+            }
+          }
+
+          const bodyPixels = (width - 1) * (bodyHeight - 1);
+
+          return {
+            verticalEdgePercentage: (verticalEdges / bodyPixels) * 100,
+            horizontalEdgePercentage: (horizontalEdges / bodyPixels) * 100,
+            cornerConcentration: (cornerConcentration / bodyPixels) * 100,
+            centerConcentration: (centerConcentration / bodyPixels) * 100,
+            hasVerticalStructures: verticalEdges / bodyPixels > 0.05, // Posibles brazos
+            hasHorizontalStructures: horizontalEdges / bodyPixels > 0.03, // Posibles hombros
+          };
+        }
+
+        analyzeSymmetry(pixels, width, height) {
+          let symmetryScore = 0;
+          const centerX = Math.floor(width / 2);
+
+          for (let y = 0; y < height; y++) {
+            for (let x = 0; x < centerX; x++) {
+              const leftIndex = (y * width + x) * 4;
+              const rightIndex = (y * width + (width - 1 - x)) * 4;
+
+              const leftIntensity =
+                (pixels[leftIndex] +
+                  pixels[leftIndex + 1] +
+                  pixels[leftIndex + 2]) /
+                3;
+              const rightIntensity =
+                (pixels[rightIndex] +
+                  pixels[rightIndex + 1] +
+                  pixels[rightIndex + 2]) /
+                3;
+
+              const difference = Math.abs(leftIntensity - rightIntensity);
+              symmetryScore += difference;
+            }
+          }
+
+          const avgSymmetryDifference = symmetryScore / (centerX * height);
+          const symmetryPercentage = Math.max(
+            0,
+            100 - (avgSymmetryDifference / 255) * 100
+          );
+
+          return {
+            symmetryPercentage: symmetryPercentage,
+            averageDifference: avgSymmetryDifference,
+            isSymmetric: symmetryPercentage > 70,
+          };
+        }
+
+        calculateDiscomfortScore(analysis) {
+          let score = 0;
+
+          // Análisis facial (PESO MAYOR - más importante para detectar tensión)
+          if (analysis.faceAnalysis.hasHighContrast) score += 30; // Alta varianza indica tensión facial
+          if (analysis.faceAnalysis.darkSpotPercentage > 15) score += 25; // Muchas áreas oscuras (ojos/boca muy abiertos)
+          if (analysis.faceAnalysis.edgePercentage > 8) score += 20; // Muchos bordes abruptos
+          if (analysis.faceAnalysis.intensityVariance > 60) score += 15; // Alta variación de intensidad
+
+          // Análisis corporal
+          if (
+            analysis.postureAnalysis.hasVerticalStructures &&
+            analysis.postureAnalysis.verticalEdgePercentage > 8
+          ) {
+            score += 20; // Estructuras verticales pronunciadas (posibles brazos cruzados)
+          }
+          if (analysis.postureAnalysis.cornerConcentration > 5) score += 15; // Concentración en esquinas
+          if (analysis.postureAnalysis.centerConcentration > 8) score += 10; // Mucha concentración central
+
+          // Análisis de colores (PESO MENOR)
+          if (analysis.colorAnalysis.warmth < 100) score += 10; // Colores muy fríos
+          if (analysis.colorAnalysis.darkness > 50) score += 10; // Imagen muy oscura
+
+          // Análisis de composición (PESO MENOR)
+          if (!analysis.compositionAnalysis.isWellBalanced) score += 10;
+          if (
+            analysis.contrastAnalysis.isHighContrast &&
+            analysis.contrastAnalysis.edgePercentage > 20
+          )
+            score += 15;
+          if (
+            !analysis.symmetryAnalysis.isSymmetric &&
+            analysis.symmetryAnalysis.symmetryPercentage < 50
+          )
+            score += 10;
+
+          return Math.min(100, score);
+        }
+
+        displayResults(analysis) {
+          const { discomfortScore, isUncomfortable } = analysis;
+
+          // Actualizar estado principal
+          this.statusResult.className = `result-status ${
+            isUncomfortable ? "uncomfortable" : "normal"
+          }`;
+          this.statusResult.textContent = isUncomfortable
+            ? `⚠️ La imagen sugiere tensión o incomodidad (${discomfortScore}%)`
+            : `✅ La imagen sugiere una composición relajada (${discomfortScore}%)`;
+
+          // Mostrar indicadores detallados
+          this.indicators.innerHTML = "";
+
+          // Indicadores visuales
+          const indicators = [
+            {
+              name: "Calidez de Colores",
+              value: analysis.colorAnalysis.warmth,
+              threshold: 120,
+              invert: false,
+            },
+            {
+              name: "Balance Compositivo",
+              value: analysis.compositionAnalysis.horizontalBalance * 100,
+              threshold: 20,
+              invert: true,
+            },
+            {
+              name: "Nivel de Contraste",
+              value: analysis.contrastAnalysis.averageContrast,
+              threshold: 30,
+              invert: false,
+            },
+            {
+              name: "Simetría",
+              value: analysis.symmetryAnalysis.symmetryPercentage,
+              threshold: 70,
+              invert: false,
+            },
+          ];
+
+          indicators.forEach((indicator) => {
+            const isProblematic = indicator.invert
+              ? indicator.value > indicator.threshold
+              : indicator.value < indicator.threshold;
+
+            const indicatorEl = document.createElement("div");
+            indicatorEl.className = "indicator";
+            indicatorEl.innerHTML = `
+                        <span class="indicator-name">${indicator.name}</span>
+                        <span class="indicator-value ${
+                          isProblematic ? "detected" : "normal"
+                        }">
+                            ${Math.round(indicator.value)}${
+              indicator.name.includes("Simetría") ||
+              indicator.name.includes("Balance")
+                ? "%"
+                : ""
+            }
+                        </span>
+                    `;
+            this.indicators.appendChild(indicatorEl);
+          });
+
+          // Mostrar análisis de colores dominantes
+          this.showColorAnalysis(analysis.colorAnalysis);
+
+          this.results.style.display = "block";
+        }
+
+        showColorAnalysis(colorAnalysis) {
+          const colorDiv = document.createElement("div");
+          colorDiv.innerHTML = `
+                    <div style="margin-top: 20px;">
+                        <h4 style="color: #4a5568; margin-bottom: 10px;">Análisis de Colores:</h4>
+                        <div class="color-analysis">
+                            <div class="color-block" style="background-color: rgb(${Math.round(
+                              colorAnalysis.avgRed
+                            )}, ${Math.round(
+            colorAnalysis.avgGreen
+          )}, ${Math.round(colorAnalysis.avgBlue)});">
+                                Promedio
+                            </div>
+                            <div style="padding: 10px; background: white; border-radius: 5px; text-align: center;">
+                                <strong>${
+                                  colorAnalysis.dominantColor
+                                }</strong><br>
+                                <small>Tono dominante</small>
+                            </div>
+                        </div>
+                    </div>
+                `;
+          this.indicators.appendChild(colorDiv);
+        }
+
+        showLoading(show) {
+          this.loading.style.display = show ? "flex" : "none";
+        }
+
+        showError(message) {
+          this.statusResult.className = "result-status uncomfortable";
+          this.statusResult.textContent = `❌ ${message}`;
+          this.results.style.display = "block";
+          this.showLoading(false);
+        }
+
+        saveToHistory(analysis) {
+          this.analysisHistory.push({
+            ...analysis,
+            id: Date.now(),
+            timestamp: new Date().toISOString(),
+          });
+
+          // Mantener solo los últimos 10 análisis
+          if (this.analysisHistory.length > 10) {
+            this.analysisHistory = this.analysisHistory.slice(-10);
+          }
+
+          console.log("Análisis guardado:", analysis);
+        }
+      }
+
+      // Inicializar la aplicación
+      document.addEventListener("DOMContentLoaded", () => {
+        new PostureDetector();
+      });
+
+      // Manejar errores globales
+      window.addEventListener("error", (e) => {
+        console.error("Error global:", e.error);
+      });
+    </script>
+  </body>
+</html>
